@@ -88,6 +88,7 @@ any supported mocha command line argument is accepted.
 * parallel (optional: defaults to false): To engage a parallel testing ability, specify parallel.type = "file|directory". Optionally specify parallel.limit to limit the concurrent running processes
 * reportLocation (required if using xunit-file reporter): specify where xunit report files should be written. Note: if you are using "xunit-file" as your reporter, you need to add it to your package.json
 * noFail (optional: defaults to false): If true, the task will exit as zero regardless of any mocha test failures
+* retries (optional: defaults to 0): To re-run mocha if there is any test failure
 
 ### iterations options
 Array of JSON objects. mocha will loop for each item, using its properties for the mocha run

@@ -123,7 +123,7 @@ module.exports = function (grunt) {
       // spill off the processes.  This can be quite a few.
       // the results will be in the form
       // [[returnCode, itterationName], ...]
-      require('./process-loop.js')(grunt)({
+      require('./process-loop.js')(grunt, null, loopOptions)({
           filesSrc: filesSrc, mocha_path: mocha_path, reportLocation: reportLocation, localopts: localopts, localOtherOptionsStringified: localOtherOptionsStringified, itLabel: itLabel, localMochaOptions: localMochaOptions, loopOptions: loopOptions
         }
         , cb);
