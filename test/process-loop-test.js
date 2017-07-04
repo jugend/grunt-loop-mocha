@@ -46,6 +46,42 @@ describe("Process Loop", function () {
       })
   })
 
+  it("should call @spawnTwice@ if retries is set to 1", function (done) {
+    var spawnCount = 0;
+
+    var testMe = process({log: {writeln: noop}}
+      , function (path, op, env) {
+        spawnCount++;
+
+        // We need to hand some stuff back...
+        var ee = new EventEmitter()
+        ee.stdout = {pipe: noop}
+        ee.stderr = {pipe: noop}
+        setTimeout(function () {
+          var code = 0;
+          if (spawnCount == 1) {
+            // Return error code on first attempt
+            code = 1;
+          }
+
+          ee.emit('exit', code)
+          ee.emit('close', code)
+        }, 1)
+        return ee
+      })
+
+    testMe({filesSrc: ['one'], localopts: [], itLabel: 'Test Label', localMochaOptions: {},
+      loopOptions: {retries: 1}}, function (err, results) {
+        expect(spawnCount)
+          .to.equal(2)
+        expect(results)
+          .to.deep.equal([
+            [ 0, 'Test Label' ]
+          ])
+        done()
+      })
+  })
+
   it("should call spawn @onceEachFile@", function (done) {
     var testMe = process({log: {writeln: noop}}
       , function (path, op, env) {

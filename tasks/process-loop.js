@@ -19,6 +19,16 @@ module.exports = function exports (grunt, _spawn) {
   }
   // Give us a function that will work with async
   return function processLoop(op, cb) {
+    // rip up the op into vars
+    var filesSrc                      = op.filesSrc
+      , mocha_path                    = op.mocha_path
+      , reportLocation                = op.reportLocation
+      , localopts                     = op.localopts
+      , localOtherOptionsStringified  = op.localOtherOptionsStringified
+      , itLabel                       = op.itLabel
+      , localMochaOptions             = op.localMochaOptions
+      , loopOptions                   = op.loopOptions;
+
     function work(_itLabel, _filesSrc, _env, _op, _cb) {
 
       // inform the world that we are going to start
@@ -39,31 +49,50 @@ module.exports = function exports (grunt, _spawn) {
       // more notify
       grunt.log.writeln("[grunt-loop-mocha] mocha argv: ", _op.toString());
 
-      // start a process
-      var child = spawn(mocha_path
-        , _op
-        , {env: _env});
+      var retries = parseInt(loopOptions.retries, 10) || 0;
 
-      // pipe the output (in paralell this is going to be noisey)
-      child.stdout.pipe(process.stdout);
-      child.stderr.pipe(process.stderr);
+      function spawnProcess() {
+        // start a process
+        var child = spawn(mocha_path, _op, {env: _env});
 
-      // report back the outcome
-      child.on('close', function (code) {
-        _cb(null, [code, _itLabel]);
-      });
+        // pipe the output (in paralell this is going to be noisey)
+        child.stdout.pipe(process.stdout);
+        child.stderr.pipe(process.stderr);
+
+        // report back the outcome
+        child.on('close', function (code) {
+          // trigger callback when there is no error or
+          // when retry is not required
+          if (!code || retries < 0) {
+            _cb(null, [code, _itLabel]);
+          }
+        });
+        retries--;
+        return child;
+      }
+
+      function retryIfRequired(proc) {
+        proc.on('exit', function (code, signal) {
+          if (code && retries > -1) {
+            setTimeout(function () {
+              var child = spawnProcess();
+              retryIfRequired(child);
+            }, 1000);
+          } else {
+            process.on('exit', function () {
+                if (signal) {
+                    process.kill(process.pid, signal);
+                } else {
+                    process.exit(code);
+                }
+            });
+          }
+        });
+      }
+
+      retryIfRequired(spawnProcess());
     }
-    // rip up the op into vars
-    var filesSrc                      = op.filesSrc
-      , mocha_path                    = op.mocha_path
-      , reportLocation                = op.reportLocation
-      , localopts                     = op.localopts
-      , localOtherOptionsStringified  = op.localOtherOptionsStringified
-      , itLabel                       = op.itLabel
-      , localMochaOptions             = op.localMochaOptions
-      , loopOptions                   = op.loopOptions;
 
-    console.log('loopOptions', loopOptions);
     var limit         = (loopOptions.parallel && loopOptions.parallel.limit) ? loopOptions.parallel.limit : 5;
     var parallelType  = (loopOptions.parallel && loopOptions.parallel.type) ? loopOptions.parallel.type : "none";
     var env           = _.merge(process.env, localOtherOptionsStringified);
